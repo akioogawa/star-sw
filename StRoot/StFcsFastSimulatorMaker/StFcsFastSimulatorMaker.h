@@ -37,6 +37,7 @@
 class StEvent;
 class StFcsHit;
 class StFcsDb;
+class g2t_track_st;
 
 #include "StChain/StMaker.h"
 #include "StEvent/StEnumerations.h"
@@ -71,13 +72,16 @@ public:
     ///  1 = "noarmal"	
     ///	 2 = "bad"         
     void setHcalZDepEff(int v=1) {SetAttr("FcsHcalZDepEff",v);}
-                                                                                                      
+
+    int backTraceG2tTrack(int id);
+
 private:    
     StFcsDb* mFcsDb;  //! pointer to DB
     void fillStEvent(StEvent* event);   //! Filling StEvent with StFcsHits    
     StFcsHit* mEcalMap[kFcsNorthSouth][kFcsEcalMaxId]; //! table to keep pointers to Ecal hits
     StFcsHit* mHcalMap[kFcsNorthSouth][kFcsHcalMaxId]; //! table to keep pointers to Hcal hits
     StFcsHit* mPresMap[kFcsNorthSouth][kFcsPresMaxId]; //! table to keep pointers to Pres hits
+    g2t_track_st* mG2tTrk;
 
     virtual const Char_t *GetCVS() const {static const Char_t cvs[]="Tag " __DATE__ " " __TIME__ ; return cvs;}  
     ClassDef(StFcsFastSimulatorMaker, 1)

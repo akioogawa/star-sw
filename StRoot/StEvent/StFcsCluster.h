@@ -18,13 +18,11 @@
 #ifndef STFCSCLUSTER_H
 #define STFCSCLUSTER_H
 
+#include "StObject.h"
+#include "StContainers.h"  
 #include "StLorentzVectorD.hh"
 
-#include "StObject.h"
-
-#include "StContainers.h"  // For StPtrVecFcsHit, StPtrVecFcsPoint
-#include "StEnumerations.h"
-
+class StFcsHit;
 class StFcsPoint;
 
 class StFcsCluster : public StObject {
@@ -70,6 +68,10 @@ public:
     const StPtrVecFcsPoint& points() const;
     void addPoint(StFcsPoint* p);
     void addPoint(StFcsPoint* p1, StFcsPoint* p2);
+    
+    void geantTrack(StSPtrVecParentGeantTrack& mGeantTrack, float& mDETot);
+    void primaryGeantTrack(StSPtrVecParentGeantTrack& mGeantTrack, float& mDETot);
+
     void print(Option_t *option="") const;
 
 private:
@@ -85,12 +87,14 @@ private:
     Float_t mTheta=0.0;           //Angle in x-y plane that defines the direction of least-2nd-sigma
     Float_t mChi2Ndf1Photon=0.0;  // &chi;<sup>2</sup> / ndf for 1-photon fit
     Float_t mChi2Ndf2Photon=0.0;  // &chi;<sup>2</sup> / ndf for 2-photon fit
+
     StLorentzVectorD mFourMomentum;  // Cluster four momentum
     StPtrVecFcsHit mHits;            // Tower hits of the current cluster
     StPtrVecFcsCluster mNeighbor;    // Neighbor clusters
     StPtrVecFcsPoint mPoints;        // Fitted points (photons) in the cluster
 
-    ClassDef(StFcsCluster, 2)
+    ClassDef(StFcsCluster, 3)
+
 };
 
 

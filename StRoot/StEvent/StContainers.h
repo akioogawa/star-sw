@@ -174,6 +174,7 @@ class StL3AlgorithmInfo;
 class StMtdHit;
 class StMtdRawHit;
 class StObject;
+class StParentGeantTrack;
 class StPhmdCluster;
 class StPhmdCluster;
 class StPhmdHit;
@@ -250,6 +251,7 @@ StCollectionDef(L3AlgorithmInfo)
 StCollectionDef(MtdHit)
 StCollectionDef(MtdRawHit)
 StCollectionDef(Object)
+StCollectionDef(ParentGeantTrack)
 StCollectionDef(PhmdCluster)
 StCollectionDef(PhmdHit)
 StCollectionDef(PrimaryTrack)

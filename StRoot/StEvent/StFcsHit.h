@@ -19,8 +19,11 @@
 
 #include "Stiostream.h"
 #include "StObject.h"
+#include "StContainers.h"
 #include "TArrayS.h"
+
 class StFcsCluster;
+class StSParentGeantTrack;
 
 class StFcsHit : public StObject {
 public:
@@ -87,6 +90,12 @@ public:
     void setCluster(StFcsCluster* clu) {mCluster = clu;}
     StFcsCluster *cluster() {return mCluster;}
 
+    StSPtrVecParentGeantTrack& geantTrack() {return mGeantTrack;}
+    const StSPtrVecParentGeantTrack& geantTrack() const {return mGeantTrack;}
+    StParentGeantTrack* highestGeantTrack() {return mGeantTrack[0];}
+  void addGeantTrack(unsigned int id, unsigned int primaryId, float e);
+    void sortGeantTrack();
+
     void print(Option_t *option="") const;
 
 protected:
@@ -99,9 +108,10 @@ protected:
     UInt_t   mNPeak=0;        // number of peaks found
     Float_t  mEnergy=0.0;     // corrected energy
     StFcsCluster* mCluster=0; // pointer to cluster this hit belongs
-    TArrayS* mData=0;         // 12bit ADC values + flag at highest 4 bits, array of timebin
-    
-    ClassDef(StFcsHit,5)
+    TArrayS* mData=0;         // 12bit ADC values + flag at highest 4 bits, array of timebin    
+    StSPtrVecParentGeantTrack mGeantTrack; //Parent Geant Track Id and Energy 
+
+    ClassDef(StFcsHit,6)
 
 };
 

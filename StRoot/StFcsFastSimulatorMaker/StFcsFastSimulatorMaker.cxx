@@ -47,6 +47,7 @@
 #include "tables/St_g2t_emc_hit_Table.h"
 #include "tables/St_g2t_hca_hit_Table.h"
 #include "tables/St_g2t_epd_hit_Table.h"
+#include "tables/St_g2t_track_Table.h"
 #include "StFcsDbMaker/StFcsDb.h"
 
 namespace{
@@ -108,7 +109,20 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
   StPtrVecFcsHit hits; //temp storage for hits
   int leakyHcal = IAttr("FcsLeakyHcal");
   int hcalZdepEff = IAttr("FcsHcalZdepEff");
-  
+
+  //G2T Track table
+  St_g2t_track* trackTable = static_cast<St_g2t_track*>(GetDataSet("g2t_track"));
+  if(trackTable) {
+    const int nTrk = trackTable->GetNRows();
+    LOG_INFO << Form("g2t_track table has %d tracks",nTrk) << endm;
+    if(nTrk>0){
+      mG2tTrk = trackTable->GetTable();
+      if(!mG2tTrk){
+	LOG_INFO << "g2t_track GetTable failed" << endm;
+      }
+    }
+  }
+
   // Read the g2t table for FCS Wcal 
   ehp=0;
   St_g2t_emc_hit* hitTable = static_cast<St_g2t_emc_hit*>(GetDataSet(Form("g2t_%3s_hit",name[ehp])));
@@ -128,14 +142,15 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
 	  const int ns  = hit->volume_id / 1000 - 1;
 	  const int id  = hit->volume_id % 1000 - 1;
 	  const int det = mFcsDb->detectorId(ehp,ns);
+	  unsigned int primaryId=backTraceG2tTrack(hit->track_p);
 	  if(det<0 || det>=kFcsNDet || id<0 || id>=kFcsEcalMaxId){
-	    LOG_WARN << Form("ECAL det=%1d id=%3d volid=%5d e=%f out of range (%d)",
-			     det,id,hit->volume_id,hit->de,kFcsMaxId) << endm;
+	    LOG_WARN << Form("ECAL det=%1d id=%3d volid=%5d GeantTrackId=%3d PrimaryId=%3d e=%f out of range (%d)",
+			     det,id,hit->volume_id,hit->track_p,primaryId,hit->de,kFcsMaxId) << endm;
 	    hit++;
 	    continue;
 	  }else if(GetDebug()){
-	    LOG_INFO << Form("ECAL det=%1d id=%3d volid=%4d e=%f",
-			     det,id,hit->volume_id,hit->de) << endm;
+	    LOG_INFO << Form("ECAL det=%1d id=%3d volid=%4d GeantTrackId=%3d PrimaryId=%3d e=%f",
+			     det,id,hit->volume_id,hit->track_p,primaryId,hit->de) << endm;
 	  }
 	  float de = hit->de;
 	  StFcsHit* fcshit=0;
@@ -149,6 +164,7 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
 	    fcshit = mEcalMap[ns][id];
 	    fcshit->setEnergy(fcshit->energy() + de);
 	  }
+	  fcshit->addGeantTrack(hit->track_p,primaryId,de);
 	  hit++;
 	}
       }
@@ -174,14 +190,15 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
 	  const int ns  = hit->volume_id / 1000 - 1;
 	  const int id  = hit->volume_id % 1000 - 1;
 	  const int det = mFcsDb->detectorId(ehp,ns);
+          unsigned int primaryId=backTraceG2tTrack(hit->track_p);
 	  if(det<0 || det>=kFcsNDet || id<0 || id>=kFcsHcalMaxId){
-	    LOG_WARN << Form("HCAL det=%d id=%d volid=%5d e=%f out of range (%d)",
-			     det,id,hit->volume_id,hit->de,kFcsMaxId) << endm;
+	    LOG_WARN << Form("HCAL det=%d id=%d volid=%5d GeantTrackId=%3d PrimaryId=%3d e=%f out of range (%d)",
+			     det,id,hit->volume_id,hit->track_p,primaryId,hit->de,kFcsMaxId) << endm;
 	    hit++;
 	    continue;
 	  }else if(GetDebug()){
-	    LOG_INFO << Form("HCAL det=%d id=%d volid=%5d e=%f",
-			     det,id,hit->volume_id,hit->de) << endm;
+	    LOG_INFO << Form("HCAL det=%d id=%d volid=%5d GeantTrackId=%3d PrimaryId=%3d e=%f",
+			     det,id,hit->volume_id,hit->track_p,primaryId,hit->de) << endm;
 	  }
 	  StFcsHit* fcshit=0;
 	  int ehp=0, rns=0, crt=0, sub=0, dep=0, ch=0;
@@ -200,6 +217,7 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
 	      fcshit = mHcalMap[ns][id];
 	      fcshit->setEnergy(fcshit->energy() + de);
 	    }
+	    fcshit->addGeantTrack(hit->track_p,primaryId,de);
 	    hit++;
 	  }else{ //leaky hcal with up to 4 WLSP getting lights from a tower
 	    float de[4];
@@ -234,6 +252,7 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
 		fcshit = mHcalMap[ns][id2];
 		fcshit->setEnergy(fcshit->energy() + de[j]);
 	      }
+	      fcshit->addGeantTrack(hit->track_p,primaryId,de[j]);
 	    }
 	    hit++;
 	  }
@@ -261,7 +280,7 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
 	  const int volume_id = hit->volume_id;
 	  const int ew        = volume_id/100000;  
 	  const int pp        = (volume_id%100000)/1000;
-	  int tt        = (volume_id%1000)/10;
+	  int tt              = (volume_id%1000)/10;
 	  const float de      = hit->de * 1000.0;
 	  if(ew==1) {hit++; continue;} //west side only
 	  //Hack! reverse TT Even/Odd. To be removed when EPD XML file fixed
@@ -272,14 +291,15 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
 	  int det,id,ehp,ns,crt,slt,dep,ch;
 	  mFcsDb->getIdfromEPD(pp,tt,det,id);
 	  mFcsDb->getDepfromId(det,id,ehp,ns,crt,slt,dep,ch);
+	  int primaryId=backTraceG2tTrack(hit->track_p);
 	  if(det<0 || det>=kFcsNDet || id<0 || id>=kFcsPresMaxId){
-	    LOG_WARN << Form("Pres det=%1d id=%3d volid=%4d e=%f10.6  id out of range (%d)",
-			     det,id,hit->volume_id,1000*hit->de,kFcsPresId) << endm;
+	    LOG_WARN << Form("Pres det=%1d id=%3d volid=%4d GeantTrackId=%3d PrimaryId=%3d e=%f10.6  id out of range (%d)",
+			     det,id,hit->volume_id,hit->track_p,primaryId,1000*hit->de,kFcsPresId) << endm;
 	    hit++; 
 	    continue;
 	  }else if(GetDebug()){
-	    LOG_INFO << Form("Pres det=%1d id=%3d volid=%4d e=%10.6f",
-			     det,id,hit->volume_id,1000*hit->de) << endm;
+	    LOG_INFO << Form("Pres det=%1d id=%3d volid=%4d GeantTrackId=%3d PrimaryId=%3d e=%10.6f",
+			     det,id,hit->volume_id,hit->track_p,primaryId,1000*hit->de) << endm;
 	  }
 	  StFcsHit* fcshit=0;
 	  if(mPresMap[ns][id]==0){ // New hit
@@ -290,6 +310,7 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
 	    fcshit = mPresMap[ns][id];
 	    fcshit->setEnergy(fcshit->energy() + de);
 	  }
+	  fcshit->addGeantTrack(hit->track_p,primaryId,de);
 	  hit++;
 	}
       }
@@ -318,6 +339,7 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
       int ehp = mFcsDb->ecalHcalPres(det);
       hits[i]->setAdc(0,adc);
       hits[i]->setEnergy(digi_energy);
+      hits[i]->sortGeantTrack();
       fcscollection->addHit(det,hits[i]); 
       etot[ehp] += digi_energy;
 	     nhit[ehp]++;
@@ -327,13 +349,43 @@ void StFcsFastSimulatorMaker::fillStEvent(StEvent* event) {
   }
   
   if(GetDebug()>0){
+
+    St_g2t_track* trackTable = static_cast<St_g2t_track*>(GetDataSet("g2t_track"));
+    if(trackTable) {
+      const int nTrk = trackTable->GetNRows();
+      LOG_INFO << Form("g2t_track table has %d tracks",nTrk) << endm;
+      if(nTrk>0){
+	const g2t_track_st* trk = trackTable->GetTable();
+	if(!trk){
+	    LOG_INFO << "g2t_trackGetTable failed" << endm;
+	}else{
+	    for (int i=0; i < nTrk; ++i) {
+		LOG_INFO<<Form("G2TTrk i=%3d id=%3d Epid=%4d Gpid=%3d Vtx=%3d Parent=%3d E=%6.2f",
+			       i,trk->id,trk->eg_pid,trk->ge_pid,trk->start_vertex_p,trk->next_parent_p,trk->e)<<endm;
+		trk++;
+	    }
+	}
+      }
+    }
+          
     for(int ehp=0; ehp<kFcsEHP; ehp++){
       LOG_INFO << Form("%s Found %d g2t hits in %d cells, created %d hits with ADC>ZS(%d) and Etot=%8.3f",
 		       name[ehp],ng2thit[ehp],nhit[ehp],
 		       fcscollection->numberOfHits(ehp*2) + fcscollection->numberOfHits(ehp*2+1),
 		       zs, etot[ehp]) 
 	       << endm;
-    }
-    if(GetDebug()>1) fcscollection->print();
+    }    
+    if(GetDebug()>1) fcscollection->print(GetDebug());
   }
+}
+
+int StFcsFastSimulatorMaker::backTraceG2tTrack(int id){
+  int i = id - 1;
+  while(mG2tTrk[i].next_parent_p !=0){
+    if(GetDebug())
+      LOG_INFO<<Form("  BackTrace from=%3d id=%3d Epid=%4d Gpid=%3d Vtx=%3d Parent=%3d E=%6.2f",
+		     id,mG2tTrk[i].id,mG2tTrk[i].eg_pid,mG2tTrk[i].ge_pid,mG2tTrk[i].start_vertex_p,mG2tTrk[i].next_parent_p,mG2tTrk[i].e)<<endm;
+    i = mG2tTrk[i].next_parent_p - 1;
+  }
+  return i + 1;
 }

@@ -15,6 +15,9 @@
  *
  **************************************************************************/
 #include "StFcsHit.h"
+#include "StMessMgr.h"
+#include "StEnumerations.h"
+#include "StParentGeantTrack.h"
 
 ClassImp(StFcsHit)
 
@@ -138,4 +141,23 @@ void StFcsHit::print(Option_t *option) const {
 	cout << Form("%4d (%3d) ",adc(i),timebin(i));
     }
     cout << endl;
+    for(unsigned int i=0; i<mGeantTrack.size(); i++){
+	cout << Form("   GeantTrack i=%4d Id=%4d primaryId=%4d Energy=%6.4f",
+		     i,mGeantTrack[i]->id(),mGeantTrack[i]->primaryId(),mGeantTrack[i]->energy())<<endl;
+    }
+}
+
+void StFcsHit::addGeantTrack(unsigned int id, unsigned int primaryId, float e){  
+    int n=mGeantTrack.size();
+    for(int i=0; i<n; i++){
+	if(mGeantTrack[i]->id() == id) {mGeantTrack[i]->addEnergy(e); return;}
+    }
+    mGeantTrack.push_back(new StParentGeantTrack(id,primaryId,e));
+    return;
+}
+
+void StFcsHit::sortGeantTrack(){  //Sort Geant Track by descending order of energy
+    std::sort(mGeantTrack.begin(), mGeantTrack.end(), [](StParentGeantTrack* a, StParentGeantTrack* b){
+            return b->energy() < a->energy();
+        });   
 }

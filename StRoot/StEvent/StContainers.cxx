@@ -161,6 +161,7 @@
 #include "StL3AlgorithmInfo.h"
 #include "StMtdHit.h"
 #include "StMtdRawHit.h"
+#include "StParentGeantTrack.h"
 #include "StPhmdCluster.h"
 #include "StPhmdHit.h"
 #include "StPrimaryTrack.h"
@@ -234,6 +235,7 @@ StCollectionImp(L3AlgorithmInfo)
 StCollectionImp(MtdHit)
 StCollectionImp(MtdRawHit)
 StCollectionImp(Object)
+StCollectionImp(ParentGeantTrack)
 StCollectionImp(PhmdCluster)
 StCollectionImp(PhmdHit)
 StCollectionImp(PrimaryTrack)

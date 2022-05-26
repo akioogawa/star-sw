@@ -64,9 +64,11 @@
 #include "StLorentzVectorF.hh"
 
 #include "StMessMgr.h"
-#include "StEventTypes.h"
+#include "StEvent/StEvent.h"
+#include "StEvent/StFcsCollection.h"
 #include "StEvent/StFcsHit.h"
 #include "StEvent/StFcsCluster.h"
+#include "StEvent/StParentGeantTrack.h"
 #include "StFcsDbMaker/StFcsDb.h"
 
 #include "StMuDSTMaker/COMMON/StMuTypes.hh"
@@ -127,7 +129,32 @@ int StFcsClusterMaker::Make() {
       }
       makeCluster(det);	
     }
-    if(GetDebug()>0) mFcsCollection->print(3);
+    if(GetDebug()>0) {
+      mFcsCollection->print(3);
+      for(int det=0; det<=kFcsHcalSouthDetId; det++) {
+	StSPtrVecFcsCluster&  clusters = mFcsCollection->clusters(det);	    
+	int n=clusters.size();
+	for(int iclu=0; iclu<n; iclu++){
+	  LOG_INFO << Form("Det=%1d Clu=%2d NTow=%2d E=%6.2f",
+			   det,iclu,clusters[iclu]->nTowers(),clusters[iclu]->energy()) << endm;
+	  float etot;
+	  StSPtrVecParentGeantTrack gt;
+	  clusters[iclu]->geantTrack(gt,etot);
+	  int nt=gt.size();
+	  for(int itrk=0; itrk<nt; itrk++){
+	    LOG_INFO << Form("  GeantTrk   i=%3d id=%3d primary=%3d e=%6.4f frac=%6.4f",
+			     itrk,gt[itrk]->id(),gt[itrk]->primaryId(),gt[itrk]->energy(),gt[itrk]->energy()/etot) <<endm;
+	  }
+	  StSPtrVecParentGeantTrack gt2;
+	  clusters[iclu]->primaryGeantTrack(gt2,etot);
+	  int nt2=gt2.size();
+	  for(int itrk=0; itrk<nt2; itrk++){
+	    LOG_INFO << Form("  PrimaryTrk i=%3d id=%3d primary=%3d e=%6.4f frac=%6.4f",
+			     itrk,gt2[itrk]->id(),gt2[itrk]->primaryId(),gt2[itrk]->energy(),gt2[itrk]->energy()/etot) <<endm;
+	  }
+	}
+      }    
+    }
     return kStOk;
 }
 
